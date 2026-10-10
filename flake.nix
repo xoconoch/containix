@@ -5,13 +5,20 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
 
-  outputs = { self, nixpkgs }: {
-    nixosModules = {
-      containix = import ./modules/default.nix;
-      default = self.nixosModules.containix;
-    };
+  outputs =
+    { self, nixpkgs }:
+    let
+      system = "x86_64-linux";
+    in
+    {
+      nixosModules = {
+        containix = import ./modules/default.nix;
+        default = self.nixosModules.containix;
+      };
 
-    # Legacy output for flakes compatibility
-    nixosModule = self.nixosModules.default;
-  };
+      # Legacy output for flakes compatibility
+      nixosModule = self.nixosModules.default;
+
+      formatter.${system} = nixpkgs.legacyPackages.${system}.nixfmt-tree;
+    };
 }

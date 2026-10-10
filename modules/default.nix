@@ -1,7 +1,17 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
-  inherit (lib) mkOption mkEnableOption mkIf types;
+  inherit (lib)
+    mkOption
+    mkEnableOption
+    mkIf
+    types
+    ;
   serializer = import ./serializer.nix { inherit lib pkgs; };
 
   # Service submodule
@@ -19,7 +29,10 @@ let
       };
 
       backend = mkOption {
-        type = types.enum [ "docker" "podman" ];
+        type = types.enum [
+          "docker"
+          "podman"
+        ];
         default = "docker";
         description = "Container engine backend to manage the compose project.";
       };
@@ -44,37 +57,37 @@ let
 
       services = mkOption {
         type = types.attrsOf serviceSubmodule;
-        default = {};
+        default = { };
         description = "Service specifications matching Compose Spec 05-services.md.";
       };
 
       networks = mkOption {
         type = types.attrsOf types.attrs;
-        default = {};
+        default = { };
         description = "Top-level networks definitions.";
       };
 
       volumes = mkOption {
         type = types.attrsOf types.attrs;
-        default = {};
+        default = { };
         description = "Top-level volumes definitions.";
       };
 
       secrets = mkOption {
         type = types.attrsOf types.attrs;
-        default = {};
+        default = { };
         description = "Top-level secrets definitions.";
       };
 
       configs = mkOption {
         type = types.attrsOf types.attrs;
-        default = {};
+        default = { };
         description = "Top-level configs definitions.";
       };
 
       extraYaml = mkOption {
         type = types.attrs;
-        default = {};
+        default = { };
         description = "Raw top-level fields merged into the final Compose output.";
       };
 
@@ -95,87 +108,98 @@ let
 
   cfg = config.virtualisation.containix;
 
-in {
+in
+{
   options.virtualisation.containix = mkOption {
     type = types.attrsOf (types.submodule projectModule);
-    default = {};
+    default = { };
     description = "Declarative Docker/Podman Compose projects managed natively by systemd.";
   };
 
-  config = mkIf (cfg != {}) {
+  config = mkIf (cfg != { }) {
     # 1. Automatically enable Docker / Podman if required by projects
     virtualisation.docker.enable = lib.mkDefault (
       lib.any (p: p.enable && p.backend == "docker") (lib.attrValues cfg)
     );
 
-    virtualisation.podman = lib.mkIf (lib.any (p: p.enable && p.backend == "podman") (lib.attrValues cfg)) {
-      enable = lib.mkDefault true;
-      dockerSocket.enable = lib.mkDefault true;
-    };
+    virtualisation.podman =
+      lib.mkIf (lib.any (p: p.enable && p.backend == "podman") (lib.attrValues cfg))
+        {
+          enable = lib.mkDefault true;
+          dockerSocket.enable = lib.mkDefault true;
+        };
 
     # 2. Generate native systemd services for each enabled project
-    systemd.services = lib.mapAttrs' (name: p:
+    systemd.services = lib.mapAttrs' (
+      name: p:
       let
         isDocker = p.backend == "docker";
-        composeBin = if isDocker
-          then "${pkgs.docker-compose}/bin/docker-compose"
-          else "${pkgs.podman-compose}/bin/podman-compose";
+        composeBin =
+          if isDocker then
+            "${pkgs.docker-compose}/bin/docker-compose"
+          else
+            "${pkgs.podman-compose}/bin/podman-compose";
         cliBin = if isDocker then "${pkgs.docker}/bin/docker" else "${pkgs.podman}/bin/podman";
-      in lib.nameValuePair "containix-${name}" (mkIf p.enable {
-        description = "Declarative Compose Stack: ${p.projectName} (${p.backend})";
-        wantedBy = [ "multi-user.target" ];
-        after = [ "network-online.target" ]
+      in
+      lib.nameValuePair "containix-${name}" (
+        mkIf p.enable {
+          description = "Declarative Compose Stack: ${p.projectName} (${p.backend})";
+          wantedBy = [ "multi-user.target" ];
+          after = [
+            "network-online.target"
+          ]
           ++ (lib.optional isDocker "docker.service")
           ++ (lib.optional (!isDocker) "podman.service");
-        wants = [ "network-online.target" ];
+          wants = [ "network-online.target" ];
 
-        path = [
-          (if isDocker then pkgs.docker-compose else pkgs.podman-compose)
-          (if isDocker then pkgs.docker else pkgs.podman)
-          pkgs.coreutils
-        ];
-
-        environment = {
-          COMPOSE_PROJECT_NAME = p.projectName;
-        };
-
-        serviceConfig = {
-          Type = "simple";
-          RemainAfterExit = true;
-          WorkingDirectory = "/var/lib/containix/${name}";
-          StateDirectory = "containix/${name}";
-
-          # Optional pre-pulling of images
-          ExecStartPre = mkIf p.autoPull [
-            "${composeBin} -f ${p.out.composeYaml} pull --quiet"
+          path = [
+            (if isDocker then pkgs.docker-compose else pkgs.podman-compose)
+            (if isDocker then pkgs.docker else pkgs.podman)
+            pkgs.coreutils
           ];
 
-          # Main start command
-          ExecStart = ''
-            ${composeBin} -f ${p.out.composeYaml} up \
-              ${lib.optionalString p.removeOrphans "--remove-orphans"} \
-              --no-color
-          '';
+          environment = {
+            COMPOSE_PROJECT_NAME = p.projectName;
+          };
 
-          # Stop / clean shutdown
-          ExecStop = ''
-            ${composeBin} -f ${p.out.composeYaml} down \
-              ${lib.optionalString p.removeOrphans "--remove-orphans"} \
-              --timeout 30
-          '';
+          serviceConfig = {
+            Type = "simple";
+            RemainAfterExit = true;
+            WorkingDirectory = "/var/lib/containix/${name}";
+            StateDirectory = "containix/${name}";
 
-          # Reload support (re-up with new derivation changes)
-          ExecReload = ''
-            ${composeBin} -f ${p.out.composeYaml} up -d \
-              ${lib.optionalString p.removeOrphans "--remove-orphans"}
-          '';
+            # Optional pre-pulling of images
+            ExecStartPre = mkIf p.autoPull [
+              "${composeBin} -f ${p.out.composeYaml} pull --quiet"
+            ];
 
-          Restart = "on-failure";
-          RestartSec = "15s";
-          TimeoutStartSec = "10min";
-          TimeoutStopSec = "2min";
-        };
-      })
+            # Main start command
+            ExecStart = ''
+              ${composeBin} -f ${p.out.composeYaml} up \
+                ${lib.optionalString p.removeOrphans "--remove-orphans"} \
+                --no-color
+            '';
+
+            # Stop / clean shutdown
+            ExecStop = ''
+              ${composeBin} -f ${p.out.composeYaml} down \
+                ${lib.optionalString p.removeOrphans "--remove-orphans"} \
+                --timeout 30
+            '';
+
+            # Reload support (re-up with new derivation changes)
+            ExecReload = ''
+              ${composeBin} -f ${p.out.composeYaml} up -d \
+                ${lib.optionalString p.removeOrphans "--remove-orphans"}
+            '';
+
+            Restart = "on-failure";
+            RestartSec = "15s";
+            TimeoutStartSec = "10min";
+            TimeoutStopSec = "2min";
+          };
+        }
+      )
     ) cfg;
   };
 }

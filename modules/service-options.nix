@@ -45,7 +45,14 @@ in
       description = "Target platform/architecture.";
     };
     restart = mkOption {
-      type = types.nullOr (types.enum [ "no" "always" "on-failure" "unless-stopped" ]);
+      type = types.nullOr (
+        types.enum [
+          "no"
+          "always"
+          "on-failure"
+          "unless-stopped"
+        ]
+      );
       default = null;
       description = "Container restart policy.";
     };
@@ -55,7 +62,15 @@ in
       description = "Default number of container instances.";
     };
     pull_policy = mkOption {
-      type = types.nullOr (types.enum [ "always" "never" "missing" "build" "if_not_present" ]);
+      type = types.nullOr (
+        types.enum [
+          "always"
+          "never"
+          "missing"
+          "build"
+          "if_not_present"
+        ]
+      );
       default = null;
       description = "Image pull policy.";
     };
@@ -85,59 +100,101 @@ in
     # -------------------------------------------------------------
     environment = mkOption {
       type = types.attrsOf (types.nullOr (types.either types.str (types.either types.int types.bool)));
-      default = {};
+      default = { };
       description = "Environment variables passed into the container.";
     };
     env_file = mkOption {
-      type = types.listOf (types.either types.str (types.submodule {
-        options = {
-          path = mkOption { type = types.str; };
-          format = mkOption { type = types.nullOr types.str; default = null; };
-          required = mkOption { type = types.nullOr types.bool; default = null; };
-        };
-      }));
-      default = [];
+      type = types.listOf (
+        types.either types.str (
+          types.submodule {
+            options = {
+              path = mkOption { type = types.str; };
+              format = mkOption {
+                type = types.nullOr types.str;
+                default = null;
+              };
+              required = mkOption {
+                type = types.nullOr types.bool;
+                default = null;
+              };
+            };
+          }
+        )
+      );
+      default = [ ];
       description = "Environment files to load into the container.";
     };
     configs = mkOption {
-      type = types.listOf (types.either types.str (types.submodule {
-        options = {
-          source = mkOption { type = types.str; };
-          target = mkOption { type = types.nullOr types.str; default = null; };
-          uid = mkOption { type = types.nullOr types.str; default = null; };
-          gid = mkOption { type = types.nullOr types.str; default = null; };
-          mode = mkOption { type = types.nullOr types.str; default = null; };
-        };
-      }));
-      default = [];
+      type = types.listOf (
+        types.either types.str (
+          types.submodule {
+            options = {
+              source = mkOption { type = types.str; };
+              target = mkOption {
+                type = types.nullOr types.str;
+                default = null;
+              };
+              uid = mkOption {
+                type = types.nullOr types.str;
+                default = null;
+              };
+              gid = mkOption {
+                type = types.nullOr types.str;
+                default = null;
+              };
+              mode = mkOption {
+                type = types.nullOr types.str;
+                default = null;
+              };
+            };
+          }
+        )
+      );
+      default = [ ];
       description = "Granted configs access.";
     };
     secrets = mkOption {
-      type = types.listOf (types.either types.str (types.submodule {
-        options = {
-          source = mkOption { type = types.str; };
-          target = mkOption { type = types.nullOr types.str; default = null; };
-          uid = mkOption { type = types.nullOr types.str; default = null; };
-          gid = mkOption { type = types.nullOr types.str; default = null; };
-          mode = mkOption { type = types.nullOr types.str; default = null; };
-        };
-      }));
-      default = [];
+      type = types.listOf (
+        types.either types.str (
+          types.submodule {
+            options = {
+              source = mkOption { type = types.str; };
+              target = mkOption {
+                type = types.nullOr types.str;
+                default = null;
+              };
+              uid = mkOption {
+                type = types.nullOr types.str;
+                default = null;
+              };
+              gid = mkOption {
+                type = types.nullOr types.str;
+                default = null;
+              };
+              mode = mkOption {
+                type = types.nullOr types.str;
+                default = null;
+              };
+            };
+          }
+        )
+      );
+      default = [ ];
       description = "Granted secrets access.";
     };
     labels = mkOption {
       type = types.attrsOf types.str;
-      default = {};
+      default = { };
       description = "Metadata labels attached to the container.";
     };
     label_file = mkOption {
       type = types.listOf types.str;
-      default = [];
+      default = [ ];
       description = "Files containing metadata labels.";
     };
     annotations = mkOption {
       type = types.attrsOf types.str;
-      default = {};
+      default = { };
       description = "OCI annotations for the container.";
     };
 
@@ -146,17 +203,17 @@ in
     # -------------------------------------------------------------
     volumes = mkOption {
       type = types.listOf customTypes.volumeType;
-      default = [];
+      default = [ ];
       description = "Mounted host directories, named volumes, or tmpfs mounts.";
     };
     tmpfs = mkOption {
       type = types.either (types.listOf types.str) (types.attrsOf types.attrs);
-      default = [];
+      default = [ ];
       description = "Mount temporary file systems in the container.";
     };
     volumes_from = mkOption {
       type = types.listOf types.str;
-      default = [];
+      default = [ ];
       description = "Mount volumes from another container/service.";
     };
     read_only = mkOption {
@@ -171,7 +228,7 @@ in
     };
     storage_opt = mkOption {
       type = types.attrsOf types.str;
-      default = {};
+      default = { };
       description = "Storage driver options for this container.";
     };
 
@@ -180,25 +237,44 @@ in
     # -------------------------------------------------------------
     ports = mkOption {
       type = types.listOf customTypes.portType;
-      default = [];
+      default = [ ];
       description = "Exposed and published network ports.";
     };
     expose = mkOption {
       type = types.listOf (types.either types.str types.int);
-      default = [];
+      default = [ ];
       description = "Expose internal ports to linked services.";
     };
     networks = mkOption {
-      type = types.either (types.listOf types.str) (types.attrsOf (types.submodule {
-        options = {
-          aliases = mkOption { type = types.listOf types.str; default = []; };
-          ipv4_address = mkOption { type = types.nullOr types.str; default = null; };
-          ipv6_address = mkOption { type = types.nullOr types.str; default = null; };
-          link_local_ips = mkOption { type = types.listOf types.str; default = []; };
-          priority = mkOption { type = types.nullOr types.int; default = null; };
-        };
-      }));
-      default = [];
+      type = types.either (types.listOf types.str) (
+        types.attrsOf (
+          types.submodule {
+            options = {
+              aliases = mkOption {
+                type = types.listOf types.str;
+                default = [ ];
+              };
+              ipv4_address = mkOption {
+                type = types.nullOr types.str;
+                default = null;
+              };
+              ipv6_address = mkOption {
+                type = types.nullOr types.str;
+                default = null;
+              };
+              link_local_ips = mkOption {
+                type = types.listOf types.str;
+                default = [ ];
+              };
+              priority = mkOption {
+                type = types.nullOr types.int;
+                default = null;
+              };
+            };
+          }
+        )
+      );
+      default = [ ];
       description = "Networks to join.";
     };
     network_mode = mkOption {
@@ -219,22 +295,22 @@ in
     };
     dns = mkOption {
       type = types.either (types.listOf types.str) (types.nullOr types.str);
-      default = [];
+      default = [ ];
       description = "Custom DNS servers.";
     };
     dns_opt = mkOption {
       type = types.listOf types.str;
-      default = [];
+      default = [ ];
       description = "Custom DNS options.";
     };
     dns_search = mkOption {
       type = types.either (types.listOf types.str) (types.nullOr types.str);
-      default = [];
+      default = [ ];
       description = "Custom DNS search domains.";
     };
     extra_hosts = mkOption {
       type = types.either (types.listOf types.str) (types.attrsOf types.str);
-      default = [];
+      default = [ ];
       description = "Add host-to-IP entries to /etc/hosts.";
     };
     mac_address = mkOption {
@@ -244,12 +320,12 @@ in
     };
     links = mkOption {
       type = types.listOf types.str;
-      default = [];
+      default = [ ];
       description = "Legacy links to other services.";
     };
     external_links = mkOption {
       type = types.listOf types.str;
-      default = [];
+      default = [ ];
       description = "Links to containers outside this Compose file.";
     };
 
@@ -258,7 +334,7 @@ in
     # -------------------------------------------------------------
     depends_on = mkOption {
       type = customTypes.dependsOnType;
-      default = [];
+      default = [ ];
       description = "Express service startup and health dependency order.";
     };
     healthcheck = mkOption {
@@ -280,17 +356,17 @@ in
     };
     pre_start = mkOption {
       type = types.listOf types.attrs;
-      default = [];
+      default = [ ];
       description = "Hooks executed before service starts (v2.30+).";
     };
     post_start = mkOption {
       type = types.listOf types.attrs;
-      default = [];
+      default = [ ];
       description = "Hooks executed after service starts (v2.30+).";
     };
     pre_stop = mkOption {
       type = types.listOf types.attrs;
-      default = [];
+      default = [ ];
       description = "Hooks executed before service stops (v2.30+).";
     };
 
@@ -304,20 +380,26 @@ in
     };
     cap_add = mkOption {
       type = types.listOf types.str;
-      default = [];
-      example = [ "NET_ADMIN" "SYS_TIME" ];
+      default = [ ];
+      example = [
+        "NET_ADMIN"
+        "SYS_TIME"
+      ];
       description = "Add Linux capabilities.";
     };
     cap_drop = mkOption {
       type = types.listOf types.str;
-      default = [];
+      default = [ ];
       example = [ "ALL" ];
       description = "Drop Linux capabilities.";
     };
     security_opt = mkOption {
       type = types.listOf types.str;
-      default = [];
-      example = [ "no-new-privileges:true" "seccomp=unconfined" ];
+      default = [ ];
+      example = [
+        "no-new-privileges:true"
+        "seccomp=unconfined"
+      ];
       description = "Override default security / labeling options.";
     };
     credential_spec = mkOption {
@@ -326,7 +408,13 @@ in
       description = "Credential spec for managed service account (gMSA).";
     };
     isolation = mkOption {
-      type = types.nullOr (types.enum [ "default" "process" "hyperv" ]);
+      type = types.nullOr (
+        types.enum [
+          "default"
+          "process"
+          "hyperv"
+        ]
+      );
       default = null;
       description = "Container isolation technology.";
     };
@@ -337,7 +425,7 @@ in
     };
     group_add = mkOption {
       type = types.listOf (types.either types.str types.int);
-      default = [];
+      default = [ ];
       description = "Additional group IDs inside the container.";
     };
 
@@ -428,13 +516,13 @@ in
     };
     devices = mkOption {
       type = types.listOf (types.either types.str (types.attrsOf types.str));
-      default = [];
+      default = [ ];
       example = [ "/dev/ttyUSB0:/dev/ttyUSB0" ];
       description = "Host device mappings.";
     };
     device_cgroup_rules = mkOption {
       type = types.listOf types.str;
-      default = [];
+      default = [ ];
       example = [ "c 1:3 rmw" ];
       description = "Device cgroup rules.";
     };
@@ -449,13 +537,17 @@ in
       description = "Block IO limits (weights, bps, iops).";
     };
     ulimits = mkOption {
-      type = types.attrsOf (types.either types.int (types.submodule {
-        options = {
-          soft = mkOption { type = types.int; };
-          hard = mkOption { type = types.int; };
-        };
-      }));
-      default = {};
+      type = types.attrsOf (
+        types.either types.int (
+          types.submodule {
+            options = {
+              soft = mkOption { type = types.int; };
+              hard = mkOption { type = types.int; };
+            };
+          }
+        )
+      );
+      default = { };
       description = "Override container ulimits.";
     };
 
@@ -481,7 +573,12 @@ in
       description = "UTS namespace mode.";
     };
     cgroup = mkOption {
-      type = types.nullOr (types.enum [ "host" "private" ]);
+      type = types.nullOr (
+        types.enum [
+          "host"
+          "private"
+        ]
+      );
       default = null;
       description = "Cgroup namespace configuration.";
     };
@@ -492,7 +589,7 @@ in
     };
     sysctls = mkOption {
       type = types.attrsOf (types.either types.str types.int);
-      default = {};
+      default = { };
       description = "Kernel parameters to set in the container.";
     };
     tty = mkOption {
@@ -506,12 +603,20 @@ in
       description = "Keep STDIN open even if not attached.";
     };
     logging = mkOption {
-      type = types.nullOr (types.submodule {
-        options = {
-          driver = mkOption { type = types.str; default = "json-file"; };
-          options = mkOption { type = types.attrsOf types.str; default = {}; };
-        };
-      });
+      type = types.nullOr (
+        types.submodule {
+          options = {
+            driver = mkOption {
+              type = types.str;
+              default = "json-file";
+            };
+            options = mkOption {
+              type = types.attrsOf types.str;
+              default = { };
+            };
+          };
+        }
+      );
       default = null;
       description = "Container logging configuration.";
     };
@@ -536,7 +641,7 @@ in
     };
     profiles = mkOption {
       type = types.listOf types.str;
-      default = [];
+      default = [ ];
       description = "Compose profiles this service belongs to.";
     };
     extends = mkOption {
@@ -546,7 +651,7 @@ in
     };
     models = mkOption {
       type = types.listOf types.attrs;
-      default = [];
+      default = [ ];
       description = "AI/ML model bindings.";
     };
 
@@ -555,7 +660,7 @@ in
     # -------------------------------------------------------------
     extraYaml = mkOption {
       type = types.attrs;
-      default = {};
+      default = { };
       description = "Raw attributes merged directly into this service definition.";
     };
   };
