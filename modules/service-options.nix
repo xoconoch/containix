@@ -4,6 +4,8 @@ let
   customTypes = import ./types.nix { inherit lib; };
 in
 {
+  freeformType = types.attrsOf types.anything;
+
   options = {
     # -------------------------------------------------------------
     # 1. CORE CONTAINER METADATA & EXECUTION
@@ -99,7 +101,9 @@ in
     # 2. ENVIRONMENT, SECRETS & CONFIGURATIONS
     # -------------------------------------------------------------
     environment = mkOption {
-      type = types.attrsOf (types.nullOr (types.either types.str (types.either types.int types.bool)));
+      type = types.either (types.listOf types.str) (
+        types.attrsOf (types.nullOr (types.either types.str (types.either types.int types.bool)))
+      );
       default = { };
       description = "Environment variables passed into the container.";
     };
@@ -183,7 +187,7 @@ in
       description = "Granted secrets access.";
     };
     labels = mkOption {
-      type = types.attrsOf types.str;
+      type = customTypes.labelsType;
       default = { };
       description = "Metadata labels attached to the container.";
     };
@@ -193,7 +197,7 @@ in
       description = "Files containing metadata labels.";
     };
     annotations = mkOption {
-      type = types.attrsOf types.str;
+      type = types.either (types.listOf types.str) (types.attrsOf types.str);
       default = { };
       description = "OCI annotations for the container.";
     };
@@ -403,7 +407,7 @@ in
       description = "Override default security / labeling options.";
     };
     credential_spec = mkOption {
-      type = types.nullOr (types.attrsOf types.str);
+      type = types.nullOr (types.either types.str (types.attrsOf types.str));
       default = null;
       description = "Credential spec for managed service account (gMSA).";
     };
@@ -527,7 +531,9 @@ in
       description = "Device cgroup rules.";
     };
     gpus = mkOption {
-      type = types.nullOr (types.either types.str (types.attrsOf types.unspecified));
+      type = types.nullOr (
+        types.either types.str (types.either (types.listOf types.attrs) (types.attrsOf types.unspecified))
+      );
       default = null;
       description = "GPU devices reservation.";
     };
@@ -650,14 +656,22 @@ in
       description = "Extend another service.";
     };
     models = mkOption {
-      type = types.listOf types.attrs;
-      default = [ ];
-      description = "AI/ML model bindings.";
+      type = types.nullOr (
+        types.either (types.listOf (types.either types.str types.attrs)) (types.attrsOf types.anything)
+      );
+      default = null;
+      description = "AI/ML model bindings (Compose Spec models.md).";
     };
 
     # -------------------------------------------------------------
-    # 10. RAW ESCAPE HATCH
+    # 10. EXTENSIONS & RAW ESCAPE HATCH
     # -------------------------------------------------------------
+    extensions = mkOption {
+      type = types.attrsOf types.anything;
+      default = { };
+      description = "Extension fields (x-*) for this service (Compose Spec 11-extension.md).";
+    };
+
     extraYaml = mkOption {
       type = types.attrs;
       default = { };

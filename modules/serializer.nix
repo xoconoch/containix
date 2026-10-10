@@ -16,108 +16,112 @@ let
     else
       val;
 
-  # Extracts all fields defined in service-options and merges extraYaml
+  # Helper to normalize extension keys to start with "x-" (Compose Spec 11-extension.md)
+  normalizeExtensions =
+    ext:
+    lib.mapAttrs' (
+      k: v:
+      let
+        prefixed = if lib.hasPrefix "x-" k then k else "x-${k}";
+      in
+      lib.nameValuePair prefixed (cleanAttrs v)
+    ) ext;
+
+  # Extracts all fields defined in service-options and merges extraYaml & extensions
   serializeService =
     s:
     let
-      raw = {
-        inherit (s)
-          image
-          container_name
-          command
-          entrypoint
-          working_dir
-          user
-          platform
-          restart
-          scale
-          pull_policy
-          runtime
-          init
-          attach
-          provider
-          environment
-          env_file
-          configs
-          secrets
-          labels
-          label_file
-          annotations
-          volumes
-          tmpfs
-          volumes_from
-          read_only
-          shm_size
-          storage_opt
-          ports
-          expose
-          networks
-          network_mode
-          hostname
-          domainname
-          dns
-          dns_opt
-          dns_search
-          extra_hosts
-          mac_address
-          links
-          external_links
-          depends_on
-          healthcheck
-          stop_signal
-          stop_grace_period
-          pre_start
-          post_start
-          pre_stop
-          privileged
-          cap_add
-          cap_drop
-          security_opt
-          credential_spec
-          isolation
-          userns_mode
-          group_add
-          cpus
-          cpu_count
-          cpu_percent
-          cpu_shares
-          cpu_period
-          cpu_quota
-          cpu_rt_runtime
-          cpu_rt_period
-          cpuset
-          mem_limit
-          mem_reservation
-          memswap_limit
-          mem_swappiness
-          pids_limit
-          oom_kill_disable
-          oom_score_adj
-          devices
-          device_cgroup_rules
-          gpus
-          blkio_config
-          ulimits
-          pid
-          ipc
-          uts
-          cgroup
-          cgroup_parent
-          sysctls
-          tty
-          stdin_open
-          logging
-          deploy
-          build
-          develop
-          profiles
-          extends
-          models
-          ;
-      }
-      // s.extraYaml;
+      base = builtins.removeAttrs s [
+        "_module"
+        "extraYaml"
+        "extensions"
+      ];
+      exts = normalizeExtensions (s.extensions or { });
+      raw = base // exts // (s.extraYaml or { });
     in
     cleanAttrs raw;
+
+  # Extracts all fields defined in network-options and merges extraYaml & extensions
+  serializeNetwork =
+    n:
+    let
+      base = builtins.removeAttrs n [
+        "_module"
+        "extraYaml"
+        "extensions"
+      ];
+      exts = normalizeExtensions (n.extensions or { });
+      raw = base // exts // (n.extraYaml or { });
+    in
+    cleanAttrs raw;
+
+  # Extracts all fields defined in volume-options and merges extraYaml & extensions
+  serializeVolume =
+    v:
+    let
+      base = builtins.removeAttrs v [
+        "_module"
+        "extraYaml"
+        "extensions"
+      ];
+      exts = normalizeExtensions (v.extensions or { });
+      raw = base // exts // (v.extraYaml or { });
+    in
+    cleanAttrs raw;
+
+  # Extracts all fields defined in config-options and merges extraYaml & extensions
+  serializeConfig =
+    c:
+    let
+      fileVal = if c.file != null then toString c.file else null;
+      base =
+        (builtins.removeAttrs c [
+          "_module"
+          "extraYaml"
+          "extensions"
+          "file"
+        ])
+        // lib.optionalAttrs (fileVal != null) { file = fileVal; };
+      exts = normalizeExtensions (c.extensions or { });
+      raw = base // exts // (c.extraYaml or { });
+    in
+    cleanAttrs raw;
+
+  # Extracts all fields defined in secret-options and merges extraYaml & extensions
+  serializeSecret =
+    s:
+    let
+      fileVal = if s.file != null then toString s.file else null;
+      base =
+        (builtins.removeAttrs s [
+          "_module"
+          "extraYaml"
+          "extensions"
+          "file"
+        ])
+        // lib.optionalAttrs (fileVal != null) { file = fileVal; };
+      exts = normalizeExtensions (s.extensions or { });
+      raw = base // exts // (s.extraYaml or { });
+    in
+    cleanAttrs raw;
+
+  # Extracts all fields defined in model-options and merges extraYaml & extensions
+  serializeModel =
+    m:
+    let
+      base = builtins.removeAttrs m [
+        "_module"
+        "extraYaml"
+        "extensions"
+      ];
+      exts = normalizeExtensions (m.extensions or { });
+      raw = base // exts // (m.extraYaml or { });
+    in
+    cleanAttrs raw;
+
+  # Extracts include element (string path or submodule object)
+  serializeInclude =
+    inc: if builtins.isAttrs inc then cleanAttrs (builtins.removeAttrs inc [ "_module" ]) else inc;
 
   # Builds the complete top-level compose.yaml file derivation
   serializeProject =
@@ -126,17 +130,43 @@ let
       cleanServices = lib.filterAttrs (_: v: v != null && v != { }) (
         lib.mapAttrs (_: serializeService) projectConfig.services
       );
+      cleanNetworks = lib.mapAttrs (_: serializeNetwork) projectConfig.networks;
+      cleanVolumes = lib.mapAttrs (_: serializeVolume) projectConfig.volumes;
+      cleanConfigs = lib.mapAttrs (_: serializeConfig) projectConfig.configs;
+      cleanSecrets = lib.mapAttrs (_: serializeSecret) projectConfig.secrets;
+      cleanModels = lib.mapAttrs (_: serializeModel) projectConfig.models;
+      cleanIncludes = builtins.map serializeInclude projectConfig.include;
+      topExtensions = normalizeExtensions projectConfig.extensions;
+      effectiveName =
+        if projectConfig.name != null then projectConfig.name else projectConfig.projectName;
+
       topLevel = {
-        services = cleanServices;
+        name = effectiveName;
       }
-      // lib.optionalAttrs (projectConfig.networks != { }) { networks = projectConfig.networks; }
-      // lib.optionalAttrs (projectConfig.volumes != { }) { volumes = projectConfig.volumes; }
-      // lib.optionalAttrs (projectConfig.secrets != { }) { secrets = projectConfig.secrets; }
-      // lib.optionalAttrs (projectConfig.configs != { }) { configs = projectConfig.configs; }
+      // lib.optionalAttrs (projectConfig.version != null) { version = projectConfig.version; }
+      // lib.optionalAttrs (cleanServices != { }) { services = cleanServices; }
+      // lib.optionalAttrs (cleanNetworks != { }) { networks = cleanNetworks; }
+      // lib.optionalAttrs (cleanVolumes != { }) { volumes = cleanVolumes; }
+      // lib.optionalAttrs (cleanConfigs != { }) { configs = cleanConfigs; }
+      // lib.optionalAttrs (cleanSecrets != { }) { secrets = cleanSecrets; }
+      // lib.optionalAttrs (cleanModels != { }) { models = cleanModels; }
+      // lib.optionalAttrs (cleanIncludes != [ ]) { include = cleanIncludes; }
+      // topExtensions
       // projectConfig.extraYaml;
     in
     pkgs.writeText "compose-${projectConfig.projectName}.yaml" (builtins.toJSON topLevel);
 in
 {
-  inherit cleanAttrs serializeService serializeProject;
+  inherit
+    cleanAttrs
+    normalizeExtensions
+    serializeService
+    serializeNetwork
+    serializeVolume
+    serializeConfig
+    serializeSecret
+    serializeModel
+    serializeInclude
+    serializeProject
+    ;
 }

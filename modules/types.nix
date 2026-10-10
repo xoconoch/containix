@@ -3,8 +3,26 @@ let
   inherit (lib) types mkOption;
 in
 rec {
-  # Value that can be passed as a single string or a list of strings (e.g. entrypoint, command)
+  # Value that can be passed as a single string or a list of strings (e.g. entrypoint, command, dns, dns_search)
   stringOrList = types.either types.str (types.listOf types.str);
+
+  # Labels: either array of "KEY=VAL" / "KEY" or attribute set of key-value pairs (Compose Spec 05, 06, 07, 08, 09)
+  labelsType = types.either (types.listOf types.str) (
+    types.attrsOf (types.nullOr (types.either types.str (types.either types.int types.bool)))
+  );
+
+  # External resource: boolean or object { name = "..."; } (Compose Spec 06, 07, 08, 09)
+  externalType = types.either types.bool (
+    types.submodule {
+      options = {
+        name = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          description = "The name of the external resource to look up.";
+        };
+      };
+    }
+  );
 
   # Port specification: can be integer, string "8080:80", or long-form object
   portType = types.either types.str (
@@ -142,5 +160,74 @@ rec {
         };
       }
     )
+  );
+
+  # IPAM network configuration elements (Compose Spec 06-networks.md)
+  ipamConfigType = types.submodule {
+    options = {
+      subnet = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "Subnet in CIDR format (e.g. 172.28.0.0/16).";
+      };
+      ip_range = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "Range of IPs from which to allocate container IPs.";
+      };
+      gateway = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "IPv4 or IPv6 gateway for the master subnet.";
+      };
+      aux_addresses = mkOption {
+        type = types.attrsOf types.str;
+        default = { };
+        description = "Auxiliary IPv4 or IPv6 addresses mapping hostname to IP.";
+      };
+    };
+  };
+
+  # IPAM network configuration block (Compose Spec 06-networks.md)
+  ipamType = types.submodule {
+    options = {
+      driver = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "Custom IPAM driver.";
+      };
+      config = mkOption {
+        type = types.listOf ipamConfigType;
+        default = [ ];
+        description = "List of IPAM configuration blocks.";
+      };
+      options = mkOption {
+        type = types.attrsOf (types.either types.str (types.either types.int types.bool));
+        default = { };
+        description = "Driver-specific IPAM options.";
+      };
+    };
+  };
+
+  # Include specification (Compose Spec 14-include.md)
+  includeType = types.either types.str (
+    types.submodule {
+      options = {
+        path = mkOption {
+          type = stringOrList;
+          description = "Path to the Compose file(s) to include.";
+        };
+        project_directory = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          description = "Directory used to resolve relative paths in the included Compose file.";
+        };
+        env_file = mkOption {
+          type = types.nullOr (types.either types.str (types.listOf types.str));
+          default = null;
+          description = "Environment file(s) defining default values for variable interpolation.";
+        };
+      };
+    }
   );
 }
