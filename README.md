@@ -75,7 +75,8 @@ Add `containix` to your flake inputs and include the NixOS module:
     # ...although idk why you'd want to do this, use nix!
     composeFiles = [ "/etc/compose/custom-overrides.yaml" ];
 
-    # Compose Spec 14: include sub-applications
+    # Compose Spec 14: include sub-applications...
+    # ...did you not read the previous comment?
     include = [
       "../shared/base-compose.yaml"
       {
