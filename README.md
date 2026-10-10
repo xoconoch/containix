@@ -47,7 +47,7 @@ Add `containix` to your flake inputs and include the NixOS module:
 { config, pkgs, ... }:
 
 {
-  services.containix.webstack = {
+  virtualisation.containix.webstack = {
     enable = true;
     backend = "docker"; # "docker" or "podman"
     autoPull = false;
@@ -103,7 +103,7 @@ Add `containix` to your flake inputs and include the NixOS module:
 
 ## Configuration Reference
 
-### Project Options (`services.containix.<name>`)
+### Project Options (`virtualisation.containix.<name>`)
 
 | Option | Type | Default | Description |
 |---|---|---|---|
@@ -121,7 +121,7 @@ Add `containix` to your flake inputs and include the NixOS module:
 | `extraYaml` | `attrs` | `{}` | Arbitrary attributes merged into the top-level Compose structure. |
 | `out.composeYaml` | `package` (read-only) | - | Generated derivation containing the composed YAML/JSON file. |
 
-### Service Options (`services.containix.<name>.services.<service>`)
+### Service Options (`virtualisation.containix.<name>.services.<service>`)
 
 Common service properties supported include:
 

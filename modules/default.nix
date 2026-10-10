@@ -99,10 +99,10 @@ let
     };
   };
 
-  cfg = config.services.containix;
+  cfg = config.virtualisation.containix;
 
 in {
-  options.services.containix = mkOption {
+  options.virtualisation.containix = mkOption {
     type = types.attrsOf (types.submodule projectModule);
     default = {};
     description = "Declarative Docker/Podman Compose projects managed natively by systemd.";
