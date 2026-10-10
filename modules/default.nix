@@ -30,12 +30,6 @@ let
         description = "Docker Compose project name (-p / COMPOSE_PROJECT_NAME).";
       };
 
-      composeVersion = mkOption {
-        type = types.str;
-        default = "3.8";
-        description = "Compose schema version.";
-      };
-
       autoPull = mkOption {
         type = types.bool;
         default = false;

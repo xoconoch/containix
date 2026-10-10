@@ -43,7 +43,6 @@ let
     let
       cleanServices = lib.filterAttrs (_: v: v != null && v != {}) (lib.mapAttrs (_: serializeService) projectConfig.services);
       topLevel = {
-        version = projectConfig.composeVersion;
         services = cleanServices;
       }
       // lib.optionalAttrs (projectConfig.networks != {}) { networks = projectConfig.networks; }

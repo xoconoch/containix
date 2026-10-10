@@ -110,7 +110,6 @@ Add `containix` to your flake inputs and include the NixOS module:
 | `enable` | `bool` | `true` | Enable this declarative compose project. |
 | `backend` | `enum [ "docker" "podman" ]` | `"docker"` | Container runtime and compose CLI backend. |
 | `projectName` | `str` | `<name>` | Docker Compose project name (`COMPOSE_PROJECT_NAME`). |
-| `composeVersion` | `str` | `"3.8"` | Schema version specified in generated compose file. |
 | `autoPull` | `bool` | `false` | Pull container images in `ExecStartPre` before startup. |
 | `removeOrphans` | `bool` | `true` | Pass `--remove-orphans` on compose up/down/reload. |
 | `services` | `attrsOf submodule` | `{}` | Service definitions. |
